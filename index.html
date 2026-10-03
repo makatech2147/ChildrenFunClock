@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>My Day Clock</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Day Clock">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#5FB4FF">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E8F3FA; --ink:#1F2B57; --muted:#5B6890; --card:#FFFFFF; --face:#FFFFFF; --line:#C9DCEB; --shadow:0 6px 0 #C9DCEB;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --bg:#141B33; --ink:#EEF2FF; --muted:#A8B3D6; --card:#1F2847; --face:#222C4F; --line:#34406A; --shadow:0 6px 0 #0D1226; }
+}
+:root[data-theme="dark"]{ --bg:#141B33; --ink:#EEF2FF; --muted:#A8B3D6; --card:#1F2847; --face:#222C4F; --line:#34406A; --shadow:0 6px 0 #0D1226; }
+html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
+*,*::before,*::after{ box-sizing:inherit; }
+/* stop the phone treating taps and long-presses as text selection */
+body{ -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; touch-action:manipulation; }
+input,select,textarea{ -webkit-user-select:text; user-select:text; -webkit-touch-callout:default; }
+.ver{ font-size:.8rem; color:var(--muted); font-weight:500; }
+#alarm .again{ margin-top:14px; font-size:1.1rem; opacity:.8; }
+.check{ margin:14px 0 4px; padding:12px; border-radius:16px; background:var(--bg); }
+.check button{ border:2px solid var(--line); background:var(--card); border-radius:12px; padding:6px 14px; font-weight:700; }
+.check ul{ margin:8px 0 0; padding-left:20px; }
+body{ margin:0; min-height:100%; background:var(--bg); color:var(--ink);
+  font-family:"Baloo 2","Trebuchet MS","Segoe UI",system-ui,sans-serif; -webkit-tap-highlight-color:transparent; }
+button,input,select{ font:inherit; color:inherit; }
+button{ cursor:pointer; }
+:focus-visible{ outline:4px solid #4D8DFF; outline-offset:3px; }
+
+.wrap{ max-width:1040px; margin:0 auto; padding:16px 18px 28px; }
+header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+h1{ font-size:clamp(1.5rem,4vw,2.1rem); margin:0; font-weight:800; letter-spacing:-.01em; }
+.grown{ background:transparent; border:2px dashed var(--line); border-radius:999px; padding:4px 14px; color:var(--muted); font-size:.95rem; user-select:none; touch-action:none; position:relative; overflow:hidden; }
+.grown .fill{ position:absolute; inset:0; background:var(--line); transform:scaleX(0); transform-origin:left; }
+.grown.holding .fill{ transform:scaleX(1); transition:transform .9s linear; }
+.grown span{ position:relative; }
+
+.main{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:22px; align-items:center; margin-top:14px; }
+@media (max-width:760px){ .main{ grid-template-columns:1fr; } }
+
+.dial{ width:100%; max-width:440px; margin:0 auto; display:block; }
+.dial .face{ fill:var(--face); stroke:var(--line); stroke-width:6; }
+.dial .num{ fill:var(--ink); font-weight:800; font-size:19px; text-anchor:middle; dominant-baseline:central; }
+.dial .tick{ stroke:var(--line); stroke-width:3; stroke-linecap:round; }
+.dial .hand{ stroke:var(--ink); stroke-linecap:round; }
+.dial .sec{ stroke:#FF7A85; stroke-width:2; stroke-linecap:round; }
+
+.now{ background:var(--card); border-radius:32px; padding:22px 22px 24px; box-shadow:var(--shadow); text-align:center; border:4px solid var(--accent,var(--line)); }
+.now .emoji{ font-size:clamp(5rem,16vw,7.5rem); line-height:1.05; display:inline-block; }
+.now h2{ margin:4px 0 0; font-size:clamp(1.8rem,5vw,2.5rem); font-weight:800; line-height:1.1; }
+.now .sub{ color:var(--muted); font-size:1.15rem; margin-top:2px; }
+.bar{ height:26px; border-radius:999px; background:var(--line); margin:16px auto 6px; overflow:hidden; max-width:380px; }
+.bar i{ display:block; height:100%; width:100%; background:var(--accent,#5CC9A7); border-radius:999px; transition:width 1s linear; }
+.left{ font-weight:700; font-size:1.2rem; }
+.done{ margin-top:14px; border:0; border-radius:999px; padding:12px 30px; font-size:1.5rem; font-weight:800; background:var(--accent,#5CC9A7); color:#1F2B57; box-shadow:0 5px 0 rgba(0,0,0,.18); }
+.done:active{ transform:translateY(3px); box-shadow:0 2px 0 rgba(0,0,0,.18); }
+.done[disabled]{ opacity:.85; cursor:default; }
+
+.path{ margin-top:26px; display:flex; gap:10px; overflow-x:auto; padding:6px 2px 12px; }
+.step{ flex:1 0 120px; background:var(--card); border-radius:22px; padding:10px 8px 8px; text-align:center; border:3px solid transparent; box-shadow:var(--shadow); }
+.step.cur{ border-color:var(--c); }
+.step .e{ font-size:2.4rem; line-height:1.1; }
+.step .t{ font-weight:800; font-size:1.15rem; }
+.step .n{ color:var(--muted); font-size:.95rem; line-height:1.2; min-height:2.4em; }
+.step .s{ font-size:1.5rem; filter:grayscale(1) opacity(.35); }
+.step.got .s{ filter:none; }
+.arrow{ align-self:center; color:var(--muted); font-size:1.4rem; flex:0 0 auto; }
+
+.note{ text-align:center; color:var(--muted); font-size:.95rem; margin-top:8px; }
+
+/* overlays */
+.ov{ position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:20; padding:calc(20px + env(safe-area-inset-top,0px)) 20px calc(20px + env(safe-area-inset-bottom,0px)); }
+.ov.show{ display:flex; }
+#start{ background:var(--bg); flex-direction:column; text-align:center; gap:10px; }
+#start .big{ font-size:6rem; line-height:1; }
+#start button{ border:0; border-radius:999px; background:#FFC23C; color:#1F2B57; font-size:2rem; font-weight:800; padding:14px 40px; box-shadow:0 6px 0 #D99A12; }
+#start p{ color:var(--muted); max-width:30em; margin:6px auto 0; }
+
+#alarm{ background:var(--accent,#5CC9A7); color:#1F2B57; flex-direction:column; text-align:center; }
+#alarm .big{ font-size:clamp(8rem,32vw,13rem); line-height:1; animation:bounce 1s ease-in-out infinite; }
+#alarm h2{ font-size:clamp(2.4rem,8vw,4rem); margin:6px 0 18px; font-weight:800; line-height:1.05; }
+#alarm button{ border:0; border-radius:999px; background:#fff; color:#1F2B57; font-size:1.8rem; font-weight:800; padding:12px 38px; box-shadow:0 6px 0 rgba(0,0,0,.2); }
+@keyframes bounce{ 0%,100%{ transform:translateY(0) rotate(-4deg);} 50%{ transform:translateY(-22px) rotate(4deg);} }
+
+.toast{ position:fixed; left:50%; top:calc(14px + env(safe-area-inset-top,0px)); transform:translate(-50%,-160%); background:var(--card); color:var(--ink); border-radius:999px; padding:10px 22px; font-weight:800; font-size:1.25rem; box-shadow:var(--shadow); border:3px solid var(--accent,#FFC23C); transition:transform .4s; z-index:15; max-width:92vw; text-align:center; }
+.toast.show{ transform:translate(-50%,0); }
+
+#settings{ background:rgba(20,27,51,.55); }
+.panel{ background:var(--card); border-radius:26px; width:min(640px,100%); max-height:100%; overflow:auto; padding:20px; }
+.panel h3{ margin:0 0 4px; font-size:1.5rem; }
+.panel p{ margin:0 0 12px; color:var(--muted); }
+.row{ display:grid; grid-template-columns:56px minmax(0,1fr) 112px 78px 40px; gap:8px; align-items:center; padding:8px 0; border-bottom:2px solid var(--line); }
+.row.head{ font-size:.85rem; color:var(--muted); border:0; padding-bottom:0; }
+.row input,.row select{ width:100%; border:2px solid var(--line); border-radius:12px; padding:6px 8px; background:var(--bg); }
+.row .em{ text-align:center; font-size:1.4rem; padding:2px; }
+.row .x{ border:0; background:transparent; font-size:1.3rem; color:var(--muted); }
+.row .extra{ grid-column:2 / -1; display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.row .extra select{ width:auto; }
+.row .extra .upl{ border:2px solid var(--line); background:var(--bg); border-radius:12px; padding:4px 12px; cursor:pointer; }
+.row .extra .finish{ background:#FFC23C; color:#1F2B57; border-color:#FFC23C; font-weight:800; }
+.vstat.ok{ color:#2E9C76; font-weight:700; }
+.row .extra button{ border:2px solid var(--line); background:var(--bg); border-radius:12px; padding:4px 12px; }
+@media (max-width:520px){ .row{ grid-template-columns:48px minmax(0,1fr) 40px; } .row .tm,.row .du{ grid-column:2; } .row.head{ display:none; } }
+.opts{ display:flex; flex-direction:column; gap:6px; margin:14px 0; }
+.opts label{ display:flex; gap:10px; align-items:center; }
+.opts input{ width:22px; height:22px; }
+.pbtns{ display:flex; gap:10px; justify-content:space-between; flex-wrap:wrap; }
+.pbtns button{ border:0; border-radius:999px; padding:10px 22px; font-weight:800; font-size:1.1rem; }
+.add{ background:var(--bg); border:2px dashed var(--line) !important; }
+.save{ background:#5CC9A7; color:#1F2B57; }
+.reset{ background:transparent; color:var(--muted); text-decoration:underline; }
+
+.star{ position:fixed; pointer-events:none; font-size:2rem; z-index:30; animation:fly 1.2s ease-out forwards; }
+@keyframes fly{ to{ transform:translate(var(--dx),var(--dy)) rotate(var(--r)) scale(.6); opacity:0; } }
+@media (prefers-reduced-motion: reduce){
+  #alarm .big{ animation:none; } .star{ display:none; } .bar i{ transition:none; }
+}
+
+/* week chart */
+.week{ margin-top:22px; background:var(--card); border-radius:28px; padding:18px 18px 20px; box-shadow:var(--shadow); }
+.week h2{ margin:0 0 10px; font-size:1.6rem; font-weight:800; }
+.days{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px; }
+.day{ text-align:center; border-radius:18px; padding:8px 2px; background:var(--bg); border:3px solid transparent; }
+.day.today{ border-color:#FFC23C; }
+.day .d{ font-weight:800; color:var(--muted); }
+.day .c{ font-size:1.6rem; font-weight:800; line-height:1.1; }
+.day .c small{ font-size:1rem; }
+.goal{ display:flex; align-items:center; gap:14px; margin-top:16px; }
+.goal .prize{ font-size:3.4rem; line-height:1; flex:0 0 auto; }
+.goal .info{ flex:1; min-width:0; }
+.goal .rn{ font-weight:800; font-size:1.25rem; line-height:1.2; }
+.goal .bar{ margin:8px 0 4px; max-width:none; height:22px; }
+.goal .bar i{ background:#FFC23C; }
+.goal .cnt{ color:var(--muted); }
+#reward{ background:#FFC23C; color:#1F2B57; flex-direction:column; text-align:center; }
+#reward .big{ font-size:clamp(8rem,30vw,12rem); line-height:1; animation:bounce 1s ease-in-out infinite; }
+#reward h2{ font-size:clamp(2.2rem,7vw,3.6rem); margin:6px 0 4px; font-weight:800; line-height:1.05; }
+#reward p{ font-size:1.4rem; margin:0 0 18px; }
+#reward button{ border:0; border-radius:999px; background:#fff; color:#1F2B57; font-size:1.8rem; font-weight:800; padding:12px 38px; box-shadow:0 6px 0 rgba(0,0,0,.2); }
+.panel h4{ margin:18px 0 6px; font-size:1.2rem; }
+.rewardset{ display:grid; grid-template-columns:64px minmax(0,1fr) 90px; gap:8px; }
+.rewardset input{ width:100%; border:2px solid var(--line); border-radius:12px; padding:6px 8px; background:var(--bg); }
+.rewardset .em{ text-align:center; font-size:1.4rem; padding:2px; }
+.small{ font-size:.85rem; color:var(--muted); }
+.rec.on{ background:#FF8A94 !important; color:#1F2B57; border-color:#FF8A94 !important; }
+.vstat{ font-size:.9rem; color:var(--muted); }
+.msg{ color:#D2455A; font-size:.9rem; width:100%; }
+#alarm,#hug,#reward{ z-index:25; }
+.sleep{ margin:10px auto 0; max-width:640px; background:var(--card); border:3px dashed #FF9F4A; border-radius:18px; padding:10px 14px; font-size:1rem; line-height:1.4; }
+#hug{ background:radial-gradient(circle at 50% 40%,#FFE3B8 0%,#FFC9A8 55%,#FFB0B9 100%); color:#5A2A3A; flex-direction:column; text-align:center; overflow:hidden; cursor:pointer; }
+#hug .big{ font-size:clamp(9rem,36vw,15rem); line-height:1; animation:squeeze 1.6s ease-in-out infinite; }
+#hug h2{ font-size:clamp(2.6rem,9vw,4.4rem); margin:8px 0 2px; font-weight:800; line-height:1.05; }
+#hug p{ font-size:1.4rem; margin:0; }
+#hugHearts{ position:absolute; inset:0; pointer-events:none; }
+.heart{ position:absolute; bottom:-60px; font-size:2.4rem; animation:rise 4s ease-in infinite; }
+@keyframes squeeze{ 0%,100%{ transform:scale(1);} 45%{ transform:scale(1.12,0.94);} 60%{ transform:scale(0.96,1.05);} }
+@keyframes rise{ 0%{ transform:translateY(0) scale(.8); opacity:0;} 15%{ opacity:1;} 100%{ transform:translateY(-110vh) scale(1.2); opacity:0;} }
+@media (prefers-reduced-motion: reduce){ #reward .big,#hug .big,.heart{ animation:none; } .heart{ display:none; } }
+
+/* ===== fits every screen: phones, tablets (portrait & landscape) and big displays ===== */
+.wrap{ max-width:min(1500px,100%); padding:clamp(10px,2vmin,24px) clamp(12px,3vw,40px) 24px; }
+h1{ font-size:clamp(1.4rem,3.6vmin,2.8rem); }
+.grown{ font-size:clamp(.85rem,1.8vmin,1.15rem); }
+.dial{ width:100%; max-width:min(560px,86vw,58vh); }
+.now{ padding:clamp(16px,3vmin,36px); border-radius:clamp(24px,4vmin,44px); }
+.now .emoji{ font-size:clamp(4.5rem,15vmin,11rem); }
+.now h2{ font-size:clamp(1.6rem,4.6vmin,3.6rem); }
+.now .sub,.left{ font-size:clamp(1.05rem,2.4vmin,1.8rem); }
+.bar{ height:clamp(20px,3.2vmin,36px); max-width:min(520px,100%); }
+.done{ font-size:clamp(1.3rem,3.2vmin,2.3rem); padding:clamp(10px,1.6vmin,18px) clamp(24px,4vmin,48px); }
+.step{ flex:1 0 clamp(104px,14vmin,170px); }
+.step .e{ font-size:clamp(2rem,5vmin,3.6rem); }
+.step .t{ font-size:clamp(1rem,2.2vmin,1.5rem); }
+.step .n{ font-size:clamp(.85rem,1.8vmin,1.2rem); }
+.week h2{ font-size:clamp(1.3rem,3vmin,2.2rem); }
+.day .c{ font-size:clamp(1.3rem,3vmin,2.2rem); }
+/* side by side whenever the screen is wider than tall (iPad landscape, laptops, landscape phones) */
+@media (orientation:landscape) and (min-width:560px){
+  .main{ grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .dial{ max-width:min(620px,46vw,70vh); }
+}
+/* stacked in portrait: tablets get a bigger clock */
+@media (orientation:portrait){
+  .main{ grid-template-columns:1fr; }
+  .dial{ max-width:min(620px,88vw,46vh); }
+}
+/* short landscape phones: keep the clock and card on one screen */
+@media (orientation:landscape) and (max-height:500px){
+  .dial{ max-width:min(78vh,44vw); }
+  .now .emoji{ font-size:clamp(3rem,18vh,5rem); }
+  .now{ padding:12px; }
+}
+/* alarm, hug and reward screens scale with the device */
+#alarm .big,#hug .big,#reward .big{ font-size:clamp(7rem,30vmin,20rem); }
+#alarm h2,#hug h2,#reward h2{ font-size:clamp(2.2rem,7vmin,5.5rem); }
+#alarm button,#reward button{ font-size:clamp(1.5rem,3.6vmin,2.6rem); padding:clamp(10px,1.8vmin,20px) clamp(28px,5vmin,60px); }
+#hug p,#reward p{ font-size:clamp(1.2rem,3vmin,2rem); }
+.panel{ width:min(760px,100%); }
+@media (prefers-reduced-motion: reduce){ #alarm .big,#hug .big,#reward .big{ animation:none; } }
+.move{ margin:14px 0; padding:10px 12px; border-radius:16px; background:var(--bg); }
+.move summary{ font-weight:800; cursor:pointer; }
+.move textarea{ width:100%; border:2px solid var(--line); border-radius:12px; padding:8px; background:var(--card); font-size:.8rem; font-family:ui-monospace,Menlo,monospace; }
+.mvbtns{ display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+.mvbtns button{ border:2px solid var(--line); background:var(--card); border-radius:12px; padding:6px 14px; font-weight:700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="greet">Good morning!</h1>
+    <button class="grown" id="grownBtn" aria-label="Grown-ups settings: press and hold"><span class="fill"></span><span>Hold for grown-ups ⚙️</span></button>
+  </header>
+
+  <div class="main">
+    <svg class="dial" id="dial" viewBox="0 0 300 300" role="img" aria-label="Clock showing today's activities"></svg>
+    <section class="now" id="now" aria-live="polite"></section>
+  </div>
+
+  <div class="path" id="path" aria-label="Today's activities in order"></div>
+  <section class="week" aria-labelledby="weekTitle">
+    <h2 id="weekTitle">My stars this week</h2>
+    <div class="days" id="days"></div>
+    <div class="goal">
+      <div class="prize" id="prize">🛝</div>
+      <div class="info">
+        <div class="rn" id="rewardName">Trip to the park</div>
+        <div class="bar"><i id="goalBar"></i></div>
+        <div class="cnt" id="goalCnt"></div>
+      </div>
+    </div>
+  </section>
+  <p class="sleep" id="sleepTip" hidden><strong>Grown-ups:</strong> this device may let the screen go to sleep, and alarms can’t ring while it’s asleep. On iPhone or iPad: Settings → Display &amp; Brightness → Auto-Lock → <strong>Never</strong>, and keep it on the charger.</p>
+  <p class="note">Keep this screen open — the alarms ring only while the clock is showing. <span class="ver">v9</span></p>
+</div>
+
+<div class="ov show" id="start">
+  <div class="big">☀️</div>
+  <button id="startBtn">Start my day</button>
+  <p>Tap to switch on sounds. On a tablet, turn the volume up and plug in the charger — the screen will try to stay awake.</p>
+</div>
+
+<div class="ov" id="alarm" role="alertdialog" aria-labelledby="alarmTitle">
+  <div class="big" id="alarmEmoji">🥣</div>
+  <h2 id="alarmTitle">Breakfast time!</h2>
+  <button id="alarmOk">I'm coming! 👍</button>
+</div>
+
+<div class="ov" id="hug" role="dialog" aria-labelledby="hugTitle">
+  <div id="hugHearts"></div>
+  <div class="big">🫂</div>
+  <h2 id="hugTitle">Big hug!</h2>
+  <p>Thank you for coming so quickly 💛</p>
+</div>
+
+<div class="ov" id="reward" role="alertdialog" aria-labelledby="rewardTitle">
+  <div class="big" id="rewardEmoji">🛝</div>
+  <h2 id="rewardTitle">You did it!</h2>
+  <p id="rewardText">You earned your reward</p>
+  <button id="rewardOk">Yay! 🎉</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="ov" id="settings">
+  <div class="panel" role="dialog" aria-labelledby="setTitle">
+    <h3 id="setTitle">Grown-ups' settings <span class="ver">· version 14</span></h3>
+    <p class="small" id="syncState" aria-live="polite"></p>
+    <div class="check"><button id="soundCheck">🔊 Sound check</button> <span class="small">Plays a tune, then each of your recordings, and shows what worked.</span><ul id="checkOut"></ul></div>
+    <p>Set each activity's start time and how long it lasts. A gentle chime plays 5 minutes before, then the alarm plays at the start time.</p>
+    <div class="row head"><span>Picture</span><span>Name</span><span>Starts</span><span>Minutes</span><span></span></div>
+    <div id="rows"></div>
+    <div class="opts">
+      <label><input type="checkbox" id="optVoice"> Computer voice reads the activity name when there’s no recording</label>
+      <label><input type="checkbox" id="optWarn"> 5-minute warning chime</label>
+    </div>
+    <h4>Weekly reward</h4>
+    <p class="small">Picture, reward, and how many stars it takes. Stars reset every Monday.</p>
+    <div class="rewardset">
+      <input class="em" id="rwEmoji" aria-label="Reward picture">
+      <input id="rwName" aria-label="Reward">
+      <input id="rwGoal" type="number" min="1" aria-label="Stars needed">
+    </div>
+    <h4>“Well done” message</h4>
+    <div class="row" style="border:0"><div class="extra" id="wellDoneBox" style="grid-column:1/-1"></div></div>
+    <details class="move">
+      <summary>Move my routine to another device</summary>
+      <p class="small">On the old device, tap <strong>Copy</strong>. On the new one, paste it in the box and tap <strong>Use this routine</strong>. (Voice notes need recording again.)</p>
+      <textarea id="moveText" rows="3" aria-label="Routine code"></textarea>
+      <div class="mvbtns"><button id="moveCopy">📋 Copy my routine</button><button id="moveUse">📥 Use this routine</button></div>
+      <p class="small" id="moveMsg" aria-live="polite"></p>
+    </details>
+    <div class="pbtns">
+      <button class="add" id="addBtn">+ Add activity</button>
+      <button class="reset" id="resetBtn">Back to original</button>
+      <button class="save" id="saveBtn">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const COLORS=['#5CC9A7','#FFC23C','#FF8A94','#9B86FF','#5FB4FF','#FF9F4A','#7ED957','#F77FD1','#3FC7D9','#E08A5C','#B5A3FF','#D9C84A'];
+  const TUNES={
+    sunrise:[[72,.18],[76,.18],[79,.18],[84,.4]],
+    twinkle:[[72,.22],[72,.22],[79,.22],[79,.22],[81,.22],[81,.22],[79,.45]],
+    hop:[[76,.15],[74,.15],[72,.15],[74,.15],[76,.15],[76,.15],[76,.35]],
+    parade:[[72,.12],[76,.12],[79,.12],[76,.12],[79,.12],[84,.4]],
+    lullaby:[[79,.35],[76,.35],[72,.5],[74,.35],[71,.7]]
+  };
+  const TUNE_NAMES={sunrise:'Sunrise',twinkle:'Twinkle',hop:'Hop',parade:'Parade',lullaby:'Lullaby'};
+  const DEFAULTS=[
+    {id:'murojaah',name:'Murojaah — Quran & Hadith',emoji:'📖',start:'06:30',mins:90,tune:'sunrise'},
+    {id:'breakfast',name:'Breakfast',emoji:'🥣',start:'08:15',mins:45,tune:'twinkle'},
+    {id:'writing',name:'Writing practice',emoji:'✏️',start:'09:00',mins:90,tune:'hop'},
+    {id:'play',name:'Play time',emoji:'🧸',start:'10:30',mins:90,tune:'parade'},
+    {id:'lunch',name:'Lunch',emoji:'🍲',start:'12:00',mins:45,tune:'twinkle'},
+    {id:'dhuhr',name:'Dhuhr prayer',emoji:'🕌',start:'12:50',mins:20,tune:'sunrise'},
+    {id:'nap',name:'Nap time',emoji:'😴',start:'13:15',mins:90,tune:'lullaby'},
+    {id:'bath',name:'Bath time',emoji:'🛁',start:'18:00',mins:30,tune:'hop'},
+    {id:'bed',name:'Bedtime',emoji:'🌙',start:'19:00',mins:30,tune:'lullaby'}
+  ];
+  const store={
+    get(k,f){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):f; }catch(e){ return f; } },
+    set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); return true; }catch(e){ return false; } },
+    del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+  };
+  const pending={};
+  const uid=()=>'a'+Math.random().toString(36).slice(2,9);
+
+  /* load + migrate older saved routines */
+  let acts=store.get('rc.acts',null);
+  if(!acts){ acts=DEFAULTS.map(a=>({...a})); }
+  else {
+    acts.forEach(a=>{ if(!a.id) a.id=uid(); });
+    if(store.get('rc.ver',1)<2){
+      DEFAULTS.slice(4).forEach(d=>{ if(!acts.some(a=>a.name===d.name)) acts.push({...d}); });
+    }
+  }
+  store.set('rc.acts',acts); store.set('rc.ver',2);
+  let opts=Object.assign({voice:true,warn:true,rwEmoji:'🛝',rwName:'Trip to the park',rwGoal:40},store.get('rc.opts',{}));
+
+  const dkey=d=>d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();
+  const today=()=>dkey(new Date());
+  const weekDates=()=>{ const d=new Date(); d.setHours(12,0,0,0); const off=(d.getDay()+6)%7; d.setDate(d.getDate()-off);
+    return Array.from({length:7},(_,i)=>{ const x=new Date(d); x.setDate(d.getDate()+i); return x; }); };
+  const weekKey=()=>dkey(weekDates()[0]);
+  let doneKey='rc.done.'+today();
+  let done=store.get(doneKey,{});
+    let wakeLock=null;
+
+  const $=id=>document.getElementById(id);
+  const toMin=s=>{ const [h,m]=s.split(':').map(Number); return h*60+m; };
+  const fmt=m=>{ let h=Math.floor(m/60)%24, mm=m%60; const h12=((h+11)%12)+1; return h12+':'+String(mm).padStart(2,'0'); };
+  const sorted=()=>acts.map((a,i)=>({...a,i,s:toMin(a.start),c:COLORS[i%COLORS.length]})).sort((a,b)=>a.s-b.s);
+  const spoken=a=>a.name.split('—')[0].trim();
+
+  /* sound */
+  /* iPhones mute web sounds when the silent switch is on; tell the phone this is media playback so the clock is heard */
+  let keepAlive=null;
+  function silentWavUrl(){
+    const n=2205, ab=new ArrayBuffer(44+n*2), v=new DataView(ab);
+    const w=(o,str)=>{ for(let i=0;i<str.length;i++) v.setUint8(o+i,str.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4,36+n*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true);
+    v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,22050,true); v.setUint32(28,44100,true);
+    v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,n*2,true);
+    return URL.createObjectURL(new Blob([ab],{type:'audio/wav'}));
+  }
+  let started=false, speechPrimed=false;
+  const STANDALONE=window.self===window.top;
+  const CAN_RECORD=STANDALONE && !!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia&&window.MediaRecorder);
+  function ensureAudio(){
+    try{ if(navigator.audioSession) navigator.audioSession.type='playback'; }catch(e){}
+    /* iPhones only allow the computer voice after it has spoken once during a tap */
+    if(!speechPrimed && 'speechSynthesis' in window){ try{ const u=new SpeechSynthesisUtterance(' '); u.volume=0; speechSynthesis.speak(u); speechPrimed=true; }catch(e){} }
+  }
+  /* every sound (tunes, chime, voice) now plays through the same video player that already works for the recordings */
+  const tuneUrls={};
+  function synthWav(notes,wave,vol){
+    const rate=22050; let total=0; notes.forEach(([,d])=>total+=d);
+    const len=Math.ceil((total+1.2)*rate), out=new Float32Array(len);
+    let t0=0.05;
+    notes.forEach(([m,d])=>{
+      const f=typeof m==='number'&&m<200?440*Math.pow(2,(m-69)/12):m, ring=d*1.6+0.3;
+      const start=Math.floor(t0*rate), n=Math.min(len-start,Math.floor(ring*rate));
+      for(let i=0;i<n;i++){
+        const t=i/rate, ph=t*f;
+        const w=wave==='sine'?Math.sin(2*Math.PI*ph):2*Math.abs(2*(ph-Math.floor(ph+0.5)))-1;
+        const env=t<0.02?t/0.02:Math.exp(-(t-0.02)*4.5/ring);
+        out[start+i]+=w*env*vol;
+      }
+      t0+=d;
+    });
+    let peak=0; for(let i=0;i<len;i++) peak=Math.max(peak,Math.abs(out[i]));
+    const g=peak>0.9?0.9/peak:1;
+    const ab=new ArrayBuffer(44+len*2), v=new DataView(ab);
+    const w=(o,str)=>{ for(let i=0;i<str.length;i++) v.setUint8(o+i,str.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4,36+len*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true);
+    v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,rate,true); v.setUint32(28,rate*2,true);
+    v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,len*2,true);
+    for(let i=0;i<len;i++){ const x=Math.max(-1,Math.min(1,out[i]*g)); v.setInt16(44+i*2,x<0?x*0x8000:x*0x7FFF,true); }
+    return URL.createObjectURL(new Blob([ab],{type:'audio/wav'}));
+  }
+  function playMedia(url){
+    clearTimeout(stopTimer); try{ player.pause(); }catch(e){}
+    player.muted=false; player.volume=1; player.src=url;
+    const p=player.play(); if(p&&p.catch) p.catch(()=>{});
+  }
+  function playTune(name){
+    const notes=TUNES[name]||TUNES.sunrise;
+    const url=tuneUrls[name]||(tuneUrls[name]=synthWav(notes,'triangle',0.5));
+    playMedia(url);
+    return notes.reduce((t,[,d])=>t+d,0)*1000+600;
+  }
+  function chime(){ playMedia(tuneUrls.__chime||(tuneUrls.__chime=synthWav([[880,.35],[659.25,.9]],'sine',0.45))); }
+  function say(text){
+    if(!('speechSynthesis' in window)) return;
+    try{ speechSynthesis.cancel(); const u=new SpeechSynthesisUtterance(text); u.rate=.9; u.pitch=1.15; speechSynthesis.speak(u); }catch(e){}
+  }
+  const clipOf=id=>{ if(pending[id]) return 'pending'; try{ return localStorage.getItem('rc.voice.'+id); }catch(e){ return null; } };
+  /* recordings are kept whole (video or audio) in the browser's database and played by one video player.
+     The player is switched on by the first tap, so later alarms are allowed to use it. */
+  const IDB=(()=>{ let dbp=null;
+    const open=()=>dbp||(dbp=new Promise((res,rej)=>{ const r=indexedDB.open('dayclock',1); r.onupgradeneeded=()=>r.result.createObjectStore('voices'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }));
+    const tx=(mode,fn)=>open().then(db=>new Promise((res,rej)=>{ const t=db.transaction('voices',mode); const q=fn(t.objectStore('voices')); t.oncomplete=()=>res(q&&q.result); t.onerror=()=>rej(t.error); }));
+    const put=async(k,blob)=>{ const buf=await blob.arrayBuffer(); return tx('readwrite',st=>st.put({type:blob.type||'audio/wav',buf},k)); };
+    const get=async k=>{ const v=await tx('readonly',st=>st.get(k)); if(!v) return null; if(v instanceof Blob) return v; return v.buf?new Blob([v.buf],{type:v.type}):null; };
+    return { put, get, del:k=>tx('readwrite',st=>st.delete(k)) };
+  })();
+  /* an AUDIO player, not a video one: iPhones refuse to start a video with sound unless someone is tapping,
+     but an audio player that was switched on by a tap may keep playing new sounds by itself (needed for alarms) */
+  const player=document.createElement('audio');
+  player.setAttribute('playsinline',''); player.preload='auto';
+  document.body.append(player);
+  let playerReady=false, silentUrl=null, urlCache={}, stopTimer=null;
+  function unlockPlayer(){
+    if(playerReady) return;
+    try{ silentUrl=silentUrl||silentWavUrl(); player.src=silentUrl; const p=player.play(); if(p&&p.then) p.then(()=>{ playerReady=true; }).catch(()=>{}); else playerReady=true; }catch(e){}
+  }
+  async function voiceUrl(id){
+    if(pending[id]){ return urlCache[id]||(urlCache[id]=URL.createObjectURL(pending[id])); }
+    const m=clipOf(id); if(!m) return null;
+    if(m!=='idb' && m!=='wav') return m;
+    if(urlCache[id]) return urlCache[id];
+    const v=await IDB.get(id); if(!v) return null;
+    const blob=v instanceof Blob?v:new Blob([v.b],{type:v.t||'audio/wav'});
+    return urlCache[id]=URL.createObjectURL(blob);
+  }
+  async function playVoice(id){
+    const m=clipOf(id); let url=m&&m!=='idb'&&m!=='wav'&&m!=='pending'?m:urlCache[id];
+    if(!url) url=await voiceUrl(id);
+    if(!url) throw new Error('none');
+    clearTimeout(stopTimer); try{ player.pause(); }catch(e){}
+    player.muted=false; player.volume=1; player.src=url;
+    try{ await player.play(); }
+    catch(e){
+      await new Promise(r=>setTimeout(r,600));
+      if(player.paused){ try{ await player.play(); }catch(e2){ throw e2; } }
+    }
+    stopTimer=setTimeout(()=>{ try{ player.pause(); }catch(e){} },15000);
+  }
+  function stopClip(){ clearTimeout(stopTimer); try{ player.pause(); }catch(e){} }
+  async function forgetVoice(id){ delete pending[id]; store.del('rc.voice.'+id); if(urlCache[id]){ URL.revokeObjectURL(urlCache[id]); delete urlCache[id]; } try{ await IDB.del(id); }catch(e){} }
+
+  /* Alarms can only play plain sound files by themselves (the tunes prove it), so every recording is turned
+     into a plain WAV sound file when it's saved. Quick way first; if the phone can't do that (videos),
+     we play it once during a tap and record what comes out. */
+  let actx=null;
+  function getCtx(){ if(!actx){ actx=new (window.AudioContext||window.webkitAudioContext)(); } try{ actx.resume(); }catch(e){} return actx; }
+  function toWavBlob(data,from){
+    const rate=22050, ratio=from/rate, len=Math.max(1,Math.min(Math.floor(data.length/ratio),rate*15));
+    const out=new Float32Array(len);
+    for(let i=0;i<len;i++){ const x=i*ratio, k=Math.floor(x), f=x-k; out[i]=(data[k]||0)*(1-f)+(data[k+1]||0)*f; }
+    let peak=0; for(let i=0;i<len;i++) peak=Math.max(peak,Math.abs(out[i]));
+    if(peak<0.003) throw Object.assign(new Error('silent'),{name:'Silent'});
+    const g=Math.min(4,0.95/peak);
+    const ab=new ArrayBuffer(44+len*2), v=new DataView(ab);
+    const w=(o,str)=>{ for(let i=0;i<str.length;i++) v.setUint8(o+i,str.charCodeAt(i)); };
+    w(0,'RIFF'); v.setUint32(4,36+len*2,true); w(8,'WAVE'); w(12,'fmt '); v.setUint32(16,16,true);
+    v.setUint16(20,1,true); v.setUint16(22,1,true); v.setUint32(24,rate,true); v.setUint32(28,rate*2,true);
+    v.setUint16(32,2,true); v.setUint16(34,16,true); w(36,'data'); v.setUint32(40,len*2,true);
+    for(let i=0;i<len;i++){ const x=Math.max(-1,Math.min(1,out[i]*g)); v.setInt16(44+i*2,x<0?x*0x8000:x*0x7FFF,true); }
+    return new Blob([ab],{type:'audio/wav'});
+  }
+  async function quickConvert(blob){
+    const ctx=getCtx(), buf=await blob.arrayBuffer();
+    const d=await new Promise((res,rej)=>{ try{ const p=ctx.decodeAudioData(buf,res,rej); if(p&&p.then) p.then(res,rej); }catch(e){ rej(e); } });
+    const ch=d.getChannelData(0);
+    if(d.numberOfChannels>1){ const c2=d.getChannelData(1); const m=new Float32Array(ch.length); for(let i=0;i<ch.length;i++) m[i]=(ch[i]+c2[i])/2; return toWavBlob(m,d.sampleRate); }
+    return toWavBlob(ch,d.sampleRate);
+  }
+  function liveConvert(blob,onTick){ /* call during a tap */
+    return new Promise((res,rej)=>{
+      const ctx=getCtx(), url=URL.createObjectURL(blob), a=new Audio();
+      a.setAttribute('playsinline',''); a.src=url;
+      let src; try{ src=ctx.createMediaElementSource(a); }catch(e){ URL.revokeObjectURL(url); rej(e); return; }
+      const proc=ctx.createScriptProcessor(4096,1,1), chunks=[]; let n=0, done=false;
+      proc.onaudioprocess=e=>{ if(!a.paused){ const c=e.inputBuffer.getChannelData(0); chunks.push(new Float32Array(c)); n+=c.length; } };
+      src.connect(proc); proc.connect(ctx.destination); src.connect(ctx.destination);
+      const tick=setInterval(()=>onTick&&onTick(Math.round(a.currentTime)),500);
+      const finish=()=>{
+        if(done) return; done=true; clearInterval(tick); clearTimeout(cap); a.pause();
+        try{ src.disconnect(); proc.disconnect(); }catch(e){}
+        URL.revokeObjectURL(url);
+        const all=new Float32Array(n); let o=0; chunks.forEach(c=>{ all.set(c,o); o+=c.length; });
+        try{ res(toWavBlob(all,ctx.sampleRate)); }catch(e){ rej(e); }
+      };
+      a.onended=finish; const cap=setTimeout(finish,15500);
+      a.play().catch(e=>{ done=true; clearInterval(tick); clearTimeout(cap); rej(e); });
+    });
+  }
+  const blobToDataUrl=b=>new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(b); });
+  async function storeWav(id,wav,fromCloud){
+    delete pending[id];
+    try{ await IDB.put(id,wav); localStorage.setItem('rc.voice.'+id,'wav'); }
+    catch(e){
+      /* database not allowed here: keep the small sound file in simple storage instead */
+      try{ IDB.del(id).catch(()=>{}); }catch(e2){}
+      localStorage.setItem('rc.voice.'+id, await blobToDataUrl(wav));
+    }
+    if(urlCache[id]){ URL.revokeObjectURL(urlCache[id]); delete urlCache[id]; }
+    await voiceUrl(id).catch(()=>{});
+    if(!fromCloud){ const at=Date.now(); store.set('rc.voiceAt.'+id,at); cloudVoiceUp(id,wav,at); }
+  }
+  /* speak with a parent's recording if one exists, else the computer voice */
+  function announce(id,fallback,delay){
+    setTimeout(()=>{
+      if(clipOf(id)) playVoice(id).catch(()=>{ if(opts.voice) say(fallback); });
+      else if(opts.voice) say(fallback);
+    },delay||0);
+  }
+
+  const awakeVid=document.createElement('video');
+  awakeVid.setAttribute('playsinline',''); awakeVid.setAttribute('muted',''); awakeVid.muted=true; awakeVid.loop=true;
+  awakeVid.src='data:video/mp4;base64,AAAAIGZ0eXBpc29tAAACAGlzb21pc28yYXZjMW1wNDEAAAXAbW9vdgAAAGxtdmhkAAAAAAAAAAAAAAAAAAAD6AAAB9AAAQAAAQAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAll0cmFrAAAAXHRraGQAAAADAAAAAAAAAAAAAAABAAAAAAAAB9AAAAAAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAABAAAAAABAAAAAQAAAAAAAkZWR0cwAAABxlbHN0AAAAAAAAAAEAAAfQAAAAAAABAAAAAAHRbWRpYQAAACBtZGhkAAAAAAAAAAAAAAAAAABAAAAAgABVxAAAAAAALWhkbHIAAAAAAAAAAHZpZGUAAAAAAAAAAAAAAABWaWRlb0hhbmRsZXIAAAABfG1pbmYAAAAUdm1oZAAAAAEAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAATxzdGJsAAAAuHN0c2QAAAAAAAAAAQAAAKhhdmMxAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAABAAEABIAAAASAAAAAAAAAABFUxhdmM2MC4zMS4xMDIgbGlieDI2NAAAAAAAAAAAAAAAGP//AAAALmF2Y0MBQsAK/+EAFmdCwArZHsBEAAADAAQAAAMACDxImSABAAVoy4PLIAAAABBwYXNwAAAAAQAAAAEAAAAUYnRydAAAAAAAAApAAAAKQAAAABhzdHRzAAAAAAAAAAEAAAACAABAAAAAABRzdHNzAAAAAAAAAAEAAAABAAAAHHN0c2MAAAAAAAAAAQAAAAEAAAABAAAAAQAAABxzdHN6AAAAAAAAAAAAAAACAAAChgAAAAoAAAAYc3RjbwAAAAAAAAACAAAGBQAACKsAAAKRdHJhawAAAFx0a2hkAAAAAwAAAAAAAAAAAAAAAgAAAAAAAAfQAAAAAAAAAAAAAAABAQAAAAABAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAQAAAAAAAAAAAAAAAAAAAJGVkdHMAAAAcZWxzdAAAAAAAAAABAAAH0AAABAAAAQAAAAACCW1kaWEAAAAgbWRoZAAAAAAAAAAAAAAAAAAAH0AAAEKAVcQAAAAAAC1oZGxyAAAAAAAAAABzb3VuAAAAAAAAAAAAAAAAU291bmRIYW5kbGVyAAAAAbRtaW5mAAAAEHNtaGQAAAAAAAAAAAAAACRkaW5mAAAAHGRyZWYAAAAAAAAAAQAAAAx1cmwgAAAAAQAAAXhzdGJsAAAAfnN0c2QAAAAAAAAAAQAAAG5tcDRhAAAAAAAAAAEAAAAAAAAAAAABABAAAAAAH0AAAAAAADZlc2RzAAAAAAOAgIAlAAIABICAgBdAFQAAAAAAH0AAAAE/BYCAgAUViFblAAaAgIABAgAAABRidHJ0AAAAAAAAH0AAAAE/AAAAIHN0dHMAAAAAAAAAAgAAABAAAAQAAAAAAQAAAoAAAAAoc3RzYwAAAAAAAAACAAAAAQAAAAEAAAABAAAAAgAAAAgAAAABAAAAWHN0c3oAAAAAAAAAAAAAABEAAAAVAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAAAQAAAAEAAAABAAAABxzdGNvAAAAAAAAAAMAAAXwAAAIiwAACLUAAAAac2dwZAEAAAByb2xsAAAAAgAAAAH//wAAABxzYmdwAAAAAHJvbGwAAAABAAAAEQAAAAEAAABidWR0YQAAAFptZXRhAAAAAAAAACFoZGxyAAAAAAAAAABtZGlyYXBwbAAAAAAAAAAAAAAAAC1pbHN0AAAAJal0b28AAAAdZGF0YQAAAAEAAAAATGF2ZjYwLjE2LjEwMAAAAAhmcmVlAAAC7W1kYXTeAgBMYXZjNjAuMzEuMTAyAAIwQA4AAAJwBgX//2zcRem95tlIt5Ys2CDZI+7veDI2NCAtIGNvcmUgMTY0IHIzMTA4IDMxZTE5ZjkgLSBILjI2NC9NUEVHLTQgQVZDIGNvZGVjIC0gQ29weWxlZnQgMjAwMy0yMDIzIC0gaHR0cDovL3d3dy52aWRlb2xhbi5vcmcveDI2NC5odG1sIC0gb3B0aW9uczogY2FiYWM9MCByZWY9MyBkZWJsb2NrPTE6MDowIGFuYWx5c2U9MHgxOjB4MTExIG1lPWhleCBzdWJtZT03IHBzeT0xIHBzeV9yZD0xLjAwOjAuMDAgbWl4ZWRfcmVmPTEgbWVfcmFuZ2U9MTYgY2hyb21hX21lPTEgdHJlbGxpcz0xIDh4OGRjdD0wIGNxbT0wIGRlYWR6b25lPTIxLDExIGZhc3RfcHNraXA9MSBjaHJvbWFfcXBfb2Zmc2V0PS0yIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9NDAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAW///8PRQABT3+AARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcAAAAGQZo4CvqAARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAc=';
+  awakeVid.style.cssText='position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;';
+  document.body.append(awakeVid);
+  async function keepAwake(){
+    let ok=false;
+    try{ if('wakeLock' in navigator && document.visibilityState==='visible'){ wakeLock=await navigator.wakeLock.request('screen'); ok=true; } }catch(e){}
+    if(!ok){ try{ await awakeVid.play(); ok=true; }catch(e){} }
+    $('sleepTip').hidden=ok;
+  }
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible' && started){ keepAwake(); render(); } });
+
+  $('startBtn').onclick=()=>{ started=true; ensureAudio(); unlockPlayer(); $('start').classList.remove('show'); keepAwake(); playTune('sunrise'); lastChecked=nowWhole()-1; };
+
+  /* alarms */
+  /* the alarm keeps calling until the child taps the button (or the activity's time is over) */
+  let ringing=false, ringTimer=null, alarmToken=0, endedHandler=null, currentAlarm=null;
+  function showAlarm(a,test){
+    $('alarm').style.setProperty('--accent',a.c);
+    $('alarmEmoji').textContent=a.emoji;
+    $('alarmTitle').textContent=spoken(a)+' time!';
+    $('alarm').classList.add('show');
+    currentAlarm=a;
+    const useVoice=a.tune==='voice' && !!clipOf(a.id);
+    if(useVoice) voiceUrl(a.id).catch(()=>{});
+    const endAt=a.s+a.mins, token=++alarmToken;
+    ringing=true; clearTimeout(ringTimer);
+    const live=()=>ringing && token===alarmToken;
+    const next=ms=>{ if(!live()) return; clearTimeout(ringTimer); ringTimer=setTimeout(ring,ms); };
+    let n=0;
+    const hasClip=!!clipOf(a.id);
+    function ring(){
+      if(!live()) return;
+      if(!test && nowWhole()>=endAt){ stopAlarm(false); return; }
+      if(hasClip){
+        /* tune first (unless "My voice" is the alarm sound), then the recording, every time round */
+        const d=useVoice?0:playTune(a.tune);
+        setTimeout(()=>{
+          if(!live()) return;
+          playVoice(a.id).then(()=>{
+            if(!test) store.del('rc.lastVoiceError');
+            if(!live()) return;
+            if(endedHandler) player.removeEventListener('ended',endedHandler);
+            endedHandler=()=>{ player.removeEventListener('ended',endedHandler); endedHandler=null; next(2500); };
+            player.addEventListener('ended',endedHandler);
+            next(25000); /* safety net if the phone never says it finished */
+          }).catch(e=>{ if(!test) store.set('rc.lastVoiceError',(e&&e.name||'missing')+' at '+fmt(nowWhole())); if(opts.voice) say("It's time for "+spoken(a)+"!"); next(7000); });
+        },d);
+        if(!useVoice) next(d+25000);
+      } else {
+        const d=playTune(a.tune==='voice'?'sunrise':a.tune);
+        if(opts.voice && n%2===0) setTimeout(()=>{ if(live()) say("It's time for "+spoken(a)+"!"); },d);
+        next(7000);
+      }
+      n++;
+    }
+    ring();
+    $('alarmOk').focus();
+  }
+  function stopAlarm(hug){
+    ringing=false; alarmToken++; clearTimeout(ringTimer); stopClip();
+    if(endedHandler){ player.removeEventListener('ended',endedHandler); endedHandler=null; }
+    try{ speechSynthesis.cancel(); }catch(e){}
+    $('alarm').classList.remove('show');
+    if(hug) showHug();
+    render();
+  }
+  $('alarmOk').onclick=e=>{ e.stopPropagation(); stopAlarm(true); };
+  $('alarm').addEventListener('click',e=>{
+    if(e.target.closest('#alarmOk')||!ringing||!currentAlarm) return;
+    ensureAudio(); unlockPlayer();
+    if(currentAlarm.tune==='voice'&&clipOf(currentAlarm.id)) playVoice(currentAlarm.id).catch(()=>{}); else playTune(currentAlarm.tune);
+  });
+  /* no copy/lookup menus on long-press, except inside text boxes */
+  document.addEventListener('contextmenu',e=>{ if(!e.target.closest('input,select,textarea')) e.preventDefault(); });
+  document.addEventListener('selectstart',e=>{ if(!e.target.closest||!e.target.closest('input,select,textarea')) e.preventDefault(); });
+
+  /* a warm hug to say thank you for coming */
+  let hugTimer=null;
+  function showHug(){
+    const ov=$('hug'); ov.classList.add('show');
+    const hearts=$('hugHearts'); hearts.innerHTML='';
+    ['💛','❤️','💕','🧡','💖','💗','💛','❤️'].forEach((h,i)=>{
+      const sp=el('span','heart',h); sp.style.left=(8+i*11)+'%'; sp.style.animationDelay=(i*0.25)+'s'; hearts.append(sp);
+    });
+    ensureAudio(); const hd=playTune('lullaby');
+    announce('welldone','Big hug! Thank you for coming so quickly!',hd);
+    clearTimeout(hugTimer); hugTimer=setTimeout(closeHug,7000);
+  }
+  function closeHug(){ clearTimeout(hugTimer); $('hug').classList.remove('show'); }
+  $('hug').onclick=closeHug;
+
+  let toastTimer;
+  function toast(text,color){
+    const t=$('toast'); t.textContent=text; t.style.setProperty('--accent',color); t.classList.add('show');
+    clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.classList.remove('show'),12000);
+  }
+
+  const nowWhole=()=>{ const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+  let lastChecked=nowWhole()-1, lastDay=today();
+  function checkAlarms(nowMin){
+    if(!started) return;
+    if(today()!==lastDay){ lastDay=today(); lastChecked=-10; }
+    if(nowMin===lastChecked) return;
+    const from=lastChecked; lastChecked=nowMin;
+    let alarmed=null, warned=null;
+    sorted().forEach(a=>{
+      if(a.s>from && a.s<=nowMin && nowMin<a.s+a.mins) alarmed=a;
+      else if(opts.warn && a.s-5>from && a.s-5<=nowMin && nowMin<a.s) warned=a;
+    });
+    if(alarmed){ closeHug(); showAlarm(alarmed,false); }
+    else if(warned && !ringing){
+      chime(); toast('5 more minutes, then '+warned.emoji+' '+spoken(warned),warned.c);
+      if(opts.voice) setTimeout(()=>say('Five more minutes, then '+spoken(warned)),1800);
+    }
+  }
+
+  /* dial */
+  const C=150, pol=(r,deg)=>{ const a=deg*Math.PI/180; return [C+r*Math.sin(a), C-r*Math.cos(a)]; };
+  const angOf=m=>((m%720)/720)*360;
+  function arc(r,a0,a1){
+    if(a1<=a0) a1+=360; const [x0,y0]=pol(r,a0),[x1,y1]=pol(r,a1); const large=(a1-a0)>180?1:0;
+    return `M${x0.toFixed(2)} ${y0.toFixed(2)} A${r} ${r} 0 ${large} 1 ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  }
+  const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  /* when activities overlap, the one that started most recently is the one happening now */
+  const currentOf=(list,m)=>list.filter(a=>m>=a.s&&m<a.s+a.mins).sort((x,y)=>y.s-x.s)[0];
+  function drawDial(now){
+    const nowMin=now.getHours()*60+now.getMinutes(), half=now.getHours()<12?0:1;
+    let s=`<circle class="face" cx="150" cy="150" r="144"/>`;
+    /* the face shows what's happening from an hour ago to 11 hours ahead, so every upcoming alarm
+       (morning or evening, preset or new) appears on it, not just ones in the current half of the day */
+    const lo=nowMin-60, hi=nowMin+660, all=sorted(), curA=currentOf(all,nowMin);
+    const shown=[];
+    all.forEach(a=>[-1440,0,1440].forEach(sh=>{ const st=a.s+sh, en=st+a.mins; if(st<hi && en>lo) shown.push({a,st:Math.max(st,lo),en:Math.min(en,hi)}); }));
+    /* draw the current activity last so it sits on top of any overlapping ones */
+    shown.sort((x,y)=>(x.a===curA)-(y.a===curA)).forEach(({a,st,en})=>{
+      const a0=angOf(((st%1440)+1440)%1440), a1=angOf(((en%1440)+1440)%1440-0.01);
+      const cur=a===curA;
+      s+=`<path d="${arc(120,a0,a1)}" stroke="${a.c}" stroke-width="${cur?34:26}" fill="none" opacity="${cur?1:.8}"/>`;
+      const mid=(a0+((a1<a0?a1+360:a1)-a0)/2); const [ex,ey]=pol(120,mid);
+      s+=`<text x="${ex.toFixed(1)}" y="${ey.toFixed(1)}" font-size="17" text-anchor="middle" dominant-baseline="central">${esc(a.emoji)}</text>`;
+    });
+    for(let i=0;i<12;i++){ const [x0,y0]=pol(102,i*30),[x1,y1]=pol(96,i*30); s+=`<line class="tick" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
+    for(let h=1;h<=12;h++){ const [x,y]=pol(80,h*30); s+=`<text class="num" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${h}</text>`; }
+    const sec=now.getSeconds(), mn=now.getMinutes()+sec/60, hr=(now.getHours()%12)+mn/60;
+    const [hx,hy]=pol(54,hr*30),[mx,my]=pol(88,mn*6),[sx,sy]=pol(94,sec*6);
+    s+=`<line class="hand" x1="150" y1="150" x2="${hx}" y2="${hy}" stroke-width="10"/>`;
+    s+=`<line class="hand" x1="150" y1="150" x2="${mx}" y2="${my}" stroke-width="6"/>`;
+    s+=`<line class="sec" x1="150" y1="150" x2="${sx}" y2="${sy}"/>`;
+    s+=`<circle cx="150" cy="150" r="8" fill="#FF7A85"/>`;
+    $('dial').innerHTML=s;
+  }
+
+  /* weekly stars */
+  function weekCounts(){
+    return weekDates().map(d=>{ const k=dkey(d); const obj=k===today()?done:store.get('rc.done.'+k,{}); return {d,k,n:Object.values(obj).filter(Boolean).length}; });
+  }
+  function renderWeek(){
+    const wk=weekCounts(), total=wk.reduce((s,x)=>s+x.n,0), goal=Math.max(1,+opts.rwGoal||1);
+    const box=$('days'); box.innerHTML='';
+    const names=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+    wk.forEach((x,i)=>{
+      const c=el('div','day'+(x.k===today()?' today':''));
+      const cnt=el('div','c'); cnt.append(document.createTextNode(x.n+' '), el('small',null,'⭐'));
+      c.append(el('div','d',names[i]),cnt); box.append(c);
+    });
+    $('prize').textContent=opts.rwEmoji; $('rewardName').textContent=opts.rwName;
+    $('goalBar').style.width=Math.min(100,total/goal*100)+'%';
+    $('goalCnt').textContent=total>=goal?'You earned it! '+total+' stars ⭐':total+' of '+goal+' stars — '+(goal-total)+' to go!';
+    return {total,goal};
+  }
+  function checkReward(){
+    const {total,goal}=renderWeek(), k='rc.rewarded.'+weekKey();
+    if(total>=goal && !store.get(k,false)){
+      store.set(k,true); pushStars();
+      $('rewardEmoji').textContent=opts.rwEmoji; $('rewardText').textContent='You earned: '+opts.rwName;
+      $('reward').classList.add('show'); playTune('parade'); setTimeout(()=>playTune('parade'),1400);
+      announce('welldone','Amazing! You earned '+opts.rwName,2800);
+    }
+  }
+  $('rewardOk').onclick=()=>$('reward').classList.remove('show');
+
+  /* now card + path */
+  function el(tag,cls,text){ const e=document.createElement(tag); if(cls) e.className=cls; if(text!=null) e.textContent=text; return e; }
+  let lastSig='';
+  function render(){
+    const now=new Date();
+    if('rc.done.'+today()!==doneKey){ doneKey='rc.done.'+today(); done=store.get(doneKey,{}); lastSig=''; }
+    const nowMin=now.getHours()*60+now.getMinutes()+now.getSeconds()/60;
+    const h=now.getHours(); $('greet').textContent=h<12?'Good morning!':h<17?'Good afternoon!':'Good evening!';
+    drawDial(now);
+    checkAlarms(Math.floor(nowMin));
+
+    const list=sorted();
+    const cur=currentOf(list,nowMin);
+    const next=list.find(a=>a.s>nowMin);
+    const card=$('now');
+    const sig=(cur?cur.id:'-')+'|'+(next?next.id:'-')+'|'+JSON.stringify(done)+'|'+acts.length;
+    if(sig!==lastSig){
+      lastSig=sig; card.innerHTML='';
+      if(cur){
+        card.style.setProperty('--accent',cur.c);
+        card.append(el('div','emoji',cur.emoji), el('h2',null,cur.name));
+        const bar=el('div','bar'); bar.append(el('i')); card.append(bar, el('div','left',''));
+        const b=el('button','done', done[cur.id]?'Done! ⭐':'I did it! ⭐'); b.disabled=!!done[cur.id];
+        b.onclick=e=>{
+          ensureAudio(); done[cur.id]=true; store.set(doneKey,done); pushStars(); burst(e.currentTarget);
+          const d=playTune('parade'); announce('welldone','Well done!',d);
+          lastSig=''; render(); setTimeout(checkReward,1500);
+        };
+        card.append(b);
+      } else if(next){
+        card.style.setProperty('--accent','var(--line)');
+        card.append(el('div','emoji','🌤️'), el('h2',null,'Little break'), el('div','sub','Next: '+next.emoji+' '+next.name+' at '+fmt(next.s)));
+        card.append(el('div','left',''));
+      } else {
+        card.style.setProperty('--accent','#FFC23C');
+        const stars=list.filter(a=>done[a.id]).length;
+        card.append(el('div','emoji','🌙'), el('h2',null,'All done for today!'), el('div','sub','You got '+stars+' of '+list.length+' stars today'));
+      }
+      const path=$('path'); path.innerHTML='';
+      list.forEach((a,k)=>{
+        if(k) path.append(el('div','arrow','›'));
+        const st=el('div','step'+(cur&&cur.id===a.id?' cur':'')+(done[a.id]?' got':'')); st.style.setProperty('--c',a.c);
+        st.append(el('div','e',a.emoji), el('div','t',fmt(a.s)), el('div','n',a.name), el('div','s','⭐'));
+        path.append(st);
+        if(cur&&cur.id===a.id) requestAnimationFrame(()=>{ /* slide the row sideways only, never scroll the whole page */ path.scrollLeft=Math.max(0,st.offsetLeft-path.offsetLeft-(path.clientWidth-st.offsetWidth)/2); });
+      });
+      renderWeek();
+    }
+    const left=card.querySelector('.left');
+    if(cur){
+      const rem=cur.s+cur.mins-nowMin; card.querySelector('.bar i').style.width=Math.max(0,rem/cur.mins*100)+'%';
+      const m=Math.ceil(rem); left.textContent=m<=1?'Almost finished!':m+' minutes left';
+    } else if(next && left){
+      const m=Math.ceil(next.s-nowMin); left.textContent=m>=60?'in '+Math.floor(m/60)+' hr '+(m%60)+' min':'in '+m+' minutes';
+    }
+  }
+
+  function burst(btn){
+    const r=btn.getBoundingClientRect(), cx=r.left+r.width/2, cy=r.top;
+    for(let i=0;i<16;i++){
+      const s=el('span','star','⭐'); s.style.left=cx+'px'; s.style.top=cy+'px';
+      const a=Math.random()*Math.PI*2, d=90+Math.random()*140;
+      s.style.setProperty('--dx',Math.cos(a)*d+'px'); s.style.setProperty('--dy',(Math.sin(a)*d-80)+'px'); s.style.setProperty('--r',(Math.random()*360)+'deg');
+      document.body.append(s); setTimeout(()=>s.remove(),1300);
+    }
+  }
+
+  /* voice recorder */
+  function voiceControls(box,id,label,onChange){
+    box.querySelectorAll('.vc').forEach(n=>n.remove()); box.querySelectorAll('.msg').forEach(n=>n.remove());
+    const has=!!clipOf(id);
+    const mk=(text,accept,capture)=>{
+      const lb=el('label','vc upl',text); const inp=el('input'); inp.type='file'; inp.accept=accept; inp.hidden=true;
+      if(capture) inp.setAttribute('capture','user');
+      lb.tabIndex=0; lb.onkeydown=e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); inp.click(); } };
+      lb.append(inp); inp.onchange=()=>handle(inp); return lb;
+    };
+    /* the camera is the one recorder a web page can open on every phone, so we film and keep only the sound */
+    const up=mk('🎙 '+(has?'Change my voice':'Add my voice'),'audio/*,video/*',false);
+    const err=t=>{ box.querySelectorAll('.msg').forEach(n=>n.remove()); box.append(el('span','vc msg',t)); };
+    const handle=async fi=>{
+      const f=fi.files&&fi.files[0]; fi.value=''; if(!f) return;
+      await handleBlob(f);
+    };
+    const handleBlob=async f=>{
+      ensureAudio();
+      if(f.size>80*1024*1024){ err('That video is very long — please record just a few seconds.'); return; }
+      err('Saving your voice…');
+      if(urlCache[id]){ URL.revokeObjectURL(urlCache[id]); delete urlCache[id]; }
+      let wav=null, why='';
+      try{ wav=await quickConvert(f); }catch(e){ why=e&&e.name||''; }
+      try{
+        if(wav){
+          await storeWav(id,wav);
+          voiceControls(box,id,label,onChange); onChange&&onChange(true);
+          box.append(el('span','vc vstat ok','✓ Saved and ready for alarms.'));
+        } else {
+          pending[id]=f; store.del('rc.voice.'+id);
+          voiceControls(box,id,label,onChange); onChange&&onChange(true);
+        }
+      }catch(e){ delete pending[id]; err('Couldn’t save that recording ('+(e&&e.name||'error')+'). Please tell Claude this message.'); }
+    };
+    box.append(up);
+    /* recording straight into the clock works when it runs as its own app (not inside claude.ai) */
+    if(CAN_RECORD){
+      const rec=el('button','vc rec','🔴 '+(has?'Record again':'Record now'));
+      let mr=null, stream=null, chunks=[], timer=null, tick=null;
+      rec.onclick=async()=>{
+        if(mr){ mr.stop(); return; }
+        box.querySelectorAll('.msg').forEach(n=>n.remove());
+        ensureAudio(); stopClip();
+        try{ stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}}); }
+        catch(e){ err('Please allow the microphone for this app (Settings → Safari → Microphone → Ask or Allow), then try again.'); return; }
+        chunks=[]; mr=new MediaRecorder(stream);
+        mr.ondataavailable=e=>{ if(e.data&&e.data.size) chunks.push(e.data); };
+        mr.onstop=async()=>{
+          clearTimeout(timer); clearInterval(tick); stream.getTracks().forEach(t=>t.stop());
+          const blob=new Blob(chunks,{type:mr.mimeType||'audio/mp4'}); mr=null;
+          rec.classList.remove('on');
+          await handleBlob(blob);
+        };
+        mr.start(); rec.classList.add('on');
+        let secs=0; rec.textContent='⏹ Stop (0s)';
+        tick=setInterval(()=>{ secs++; rec.textContent='⏹ Stop ('+secs+'s)'; },1000);
+        timer=setTimeout(()=>{ if(mr&&mr.state==='recording') mr.stop(); },10000);
+      };
+      box.append(rec);
+    }
+    if(has){
+      const play=el('button','vc','▶ Hear it'); play.onclick=()=>{ box.querySelectorAll('.msg').forEach(n=>n.remove()); ensureAudio(); unlockPlayer(); playVoice(id).catch(()=>err('Couldn’t play it. Turn the volume up and try again.')); };
+      const del=el('button','vc','🗑'); del.setAttribute('aria-label','Delete recording');
+      del.onclick=async()=>{ await forgetVoice(id); cloudVoiceDel(id); voiceControls(box,id,label,onChange); onChange&&onChange(false); };
+      box.append(play,del);
+      if(clipOf(id)==='idb'||clipOf(id)==='pending'){
+        const fin=el('button','vc finish','👆 Tap to get it ready for alarms');
+        const note=el('span','vc vstat','One more step: it plays once while the clock makes an alarm-friendly copy.');
+        fin.onclick=async()=>{
+          box.querySelectorAll('.msg').forEach(n=>n.remove());
+          ensureAudio(); stopClip(); fin.disabled=true; fin.textContent='Listening… 0s';
+          try{
+            let blob=pending[id]; if(!blob){ const v=await IDB.get(id); blob=v instanceof Blob?v:(v&&new Blob([v.b],{type:v.t})); } if(!blob) throw new Error('missing');
+            const wav=await liveConvert(blob,t=>fin.textContent='Listening… '+t+'s');
+            await storeWav(id,wav);
+            voiceControls(box,id,label,onChange);
+            box.append(el('span','vc vstat ok','✓ Ready for alarms.'));
+          }catch(e){
+            fin.disabled=false; fin.textContent='👆 Try again';
+            err(e&&e.name==='Silent'?'The copy came out silent. Turn Silent mode off, volume up, and try again.':'This phone couldn’t make the copy ('+(e&&e.name||'error')+'). Recording in Voice Memos and choosing it with Choose File usually works.');
+          }
+        };
+        box.append(fin,note);
+      }
+    } else box.append(el('span','vc vstat',label));
+  }
+
+  /* sound check: plays a tune, then every recording, and reports what happened */
+  function waitEnd(maxMs){ return new Promise(res=>{ const t=setTimeout(done,maxMs); function done(){ clearTimeout(t); player.removeEventListener('ended',done); res(); } player.addEventListener('ended',done); }); }
+  $('soundCheck').onclick=async()=>{
+    const out=$('checkOut'); out.innerHTML=''; const line=t=>{ const li=el('li',null,t); out.append(li); return li; };
+    ensureAudio(); unlockPlayer();
+    const t=line('♪ Tune… ');
+    playTune('sunrise'); await new Promise(r=>setTimeout(r,400));
+    t.textContent+=player.paused?'✗ didn’t play':'✓ playing';
+    await waitEnd(3000);
+    const items=sorted().filter(a=>clipOf(a.id)).map(a=>({id:a.id,name:a.emoji+' '+spoken(a)+(a.tune==='voice'?' (alarm sound)':' (after the tune)')}));
+    if(clipOf('welldone')) items.push({id:'welldone',name:'💛 Well done'});
+    if(!items.length) line('🎙 No recordings saved yet.');
+    for(const it of items){
+      const li=line(it.name+'… ');
+      try{ await playVoice(it.id); li.textContent+='✓ playing'; await waitEnd(16000); }
+      catch(e){ li.textContent+='✗ couldn’t play ('+(e&&e.name||'missing')+')'; }
+    }
+    if(opts.voice){ line('🗣 Computer voice: you should hear “Sound check done”.'); say('Sound check done'); }
+  };
+
+  /* settings (press and hold) */
+  const gb=$('grownBtn'); let holdT;
+  const startHold=()=>{ gb.classList.add('holding'); holdT=setTimeout(()=>{ gb.classList.remove('holding'); openSettings(); },900); };
+  const endHold=()=>{ gb.classList.remove('holding'); clearTimeout(holdT); };
+  gb.addEventListener('pointerdown',startHold); ['pointerup','pointerleave','pointercancel'].forEach(ev=>gb.addEventListener(ev,endHold));
+  gb.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openSettings(); } });
+
+  let draft=[];
+  function openSettings(){
+    draft=acts.map(a=>({...a}));
+    $('optVoice').checked=opts.voice; $('optWarn').checked=opts.warn;
+    $('rwEmoji').value=opts.rwEmoji; $('rwName').value=opts.rwName; $('rwGoal').value=opts.rwGoal;
+    drawRows(); voiceControls($('wellDoneBox'),'welldone','Plays when a star is earned and on the hug screen');
+    const pn=$('setTitle').parentNode; pn.querySelectorAll('.lost').forEach(n=>n.remove());
+    const ve=store.get('rc.lastVoiceError',null);
+    if(ve){ const m=el('p','msg lost','At the last real alarm ('+ve+'), the phone wouldn’t play your voice. If this keeps happening, tell Claude this message.'); $('setTitle').after(m); }
+    if(lostVoices){ const m=el('p','msg lost','Your phone cleared '+lostVoices+' saved recording'+(lostVoices>1?'s':'')+'. Please add '+(lostVoices>1?'them':'it')+' again with 🎙 Add my voice.'); $('setTitle').after(m); }
+    $('settings').classList.add('show');
+  }
+  function drawRows(){
+    const box=$('rows'); box.innerHTML='';
+    draft.forEach((a,i)=>{
+      const row=el('div','row');
+      const em=el('input','em'); em.value=a.emoji; em.setAttribute('aria-label','Picture'); em.oninput=()=>a.emoji=em.value;
+      const nm=el('input'); nm.value=a.name; nm.setAttribute('aria-label','Name'); nm.oninput=()=>a.name=nm.value;
+      const tm=el('input','tm'); tm.type='time'; tm.value=a.start; tm.setAttribute('aria-label','Start time'); tm.oninput=()=>a.start=tm.value||a.start;
+      const du=el('input','du'); du.type='number'; du.min=5; du.step=5; du.value=a.mins; du.setAttribute('aria-label','Minutes'); du.oninput=()=>a.mins=Math.max(5,+du.value||30);
+      const x=el('button','x','✕'); x.setAttribute('aria-label','Remove '+a.name); x.onclick=()=>{ draft.splice(i,1); drawRows(); };
+      const ex=el('div','extra'); const sel=el('select'); sel.setAttribute('aria-label','Alarm sound');
+      const fill=()=>{
+        sel.innerHTML='';
+        if(a.tune==='voice' && !clipOf(a.id)) a.tune='sunrise';
+        if(clipOf(a.id)){ const o=el('option',null,'🎙 My voice'); o.value='voice'; sel.append(o); }
+        Object.keys(TUNES).forEach(k=>{ const o=el('option',null,'♪ '+TUNE_NAMES[k]); o.value=k; sel.append(o); });
+        sel.value=a.tune;
+      };
+      fill(); sel.onchange=()=>a.tune=sel.value;
+      const test=el('button',null,'▶ Try alarm');
+      test.onclick=()=>{ ensureAudio(); unlockPlayer(); showAlarm({...a,s:toMin(a.start),c:COLORS[i%COLORS.length]},true); };
+      ex.append(sel,test);
+      const vb=el('div','extra'); vb.style.gridColumn='2 / -1';
+      row.append(em,nm,tm,du,x,ex,vb); box.append(row);
+      voiceControls(vb,a.id,'',added=>{
+        if(added) a.tune='voice';
+        const live=acts.find(x=>x.id===a.id); if(live){ live.tune=a.tune==='voice'&&!added?'sunrise':a.tune; if(!added&&live.tune==='voice') live.tune='sunrise'; store.set('rc.acts',acts); pushSettings(); }
+        fill();
+      });
+    });
+  }
+  $('addBtn').onclick=()=>{ draft.push({id:uid(),name:'New activity',emoji:'⭐',start:'15:00',mins:30,tune:'sunrise'}); drawRows(); };
+  /* move the routine between the claude.ai version and the installed app (or any two devices) */
+  $('moveCopy').onclick=async()=>{
+    const code=btoa(unescape(encodeURIComponent(JSON.stringify({v:1,acts:draft.length?draft:acts,opts}))));
+    const t=$('moveText'); t.value=code; t.focus(); t.select();
+    let ok=false; try{ await navigator.clipboard.writeText(code); ok=true; }catch(e){ try{ ok=document.execCommand('copy'); }catch(e2){} }
+    $('moveMsg').textContent=ok?'✓ Copied. Now open the clock on the other device and paste it.':'Press and hold the text above, choose Select All, then Copy.';
+  };
+  $('moveUse').onclick=()=>{
+    try{
+      const d=JSON.parse(decodeURIComponent(escape(atob($('moveText').value.trim()))));
+      if(!d||!Array.isArray(d.acts)||!d.acts.length) throw 0;
+      draft=d.acts.map(a=>({id:a.id||uid(),name:String(a.name||'Activity'),emoji:String(a.emoji||'⭐'),start:String(a.start||'12:00'),mins:Math.max(5,+a.mins||30),tune:a.tune==='voice'?'sunrise':(a.tune||'sunrise')}));
+      if(d.opts){ $('optVoice').checked=d.opts.voice!==false; $('optWarn').checked=d.opts.warn!==false; $('rwEmoji').value=d.opts.rwEmoji||'🛝'; $('rwName').value=d.opts.rwName||''; $('rwGoal').value=d.opts.rwGoal||40; }
+      drawRows(); $('moveMsg').textContent='✓ Routine loaded — tap Save to keep it.';
+    }catch(e){ $('moveMsg').textContent='That code didn’t work. Copy it again from the other device and paste the whole thing.'; }
+  };
+  $('resetBtn').onclick=()=>{ draft=DEFAULTS.map(a=>({...a})); drawRows(); };
+  $('saveBtn').onclick=()=>{
+    acts=draft.filter(a=>a.name.trim()&&a.start);
+    opts={voice:$('optVoice').checked,warn:$('optWarn').checked,
+      rwEmoji:$('rwEmoji').value.trim()||'🎁',rwName:$('rwName').value.trim()||'A special treat',rwGoal:Math.max(1,+$('rwGoal').value||40)};
+    store.set('rc.acts',acts); store.set('rc.opts',opts); pushSettings();
+    try{ const keep=new Set(acts.map(a=>'rc.voice.'+a.id).concat('rc.voice.welldone'));
+      Object.keys(localStorage).filter(k=>k.startsWith('rc.voice.')&&!keep.has(k)).forEach(k=>{ forgetVoice(k.slice(9)); cloudVoiceDel(k.slice(9)); }); }catch(e){}
+    $('settings').classList.remove('show'); resubscribeVoices(); lastSig=''; render();
+  };
+  $('settings').addEventListener('click',e=>{ if(e.target.id==='settings'){ $('settings').classList.remove('show'); } });
+
+  /* get recordings ready ahead of time so they start instantly */
+  /* check every saved recording is really still there; phones sometimes clear website storage */
+  let lostVoices=0;
+  try{ Object.keys(localStorage).filter(k=>k.startsWith('rc.voice.')).forEach(k=>{
+    const id=k.slice(9);
+    voiceUrl(id).then(u=>{ if(!u){ store.del(k); lostVoices++; } }).catch(()=>{ store.del(k); lostVoices++; });
+  }); }catch(e){}
+
+  /* ===== Keep every device in step (iPhone, iPad…) through the person's claude.ai account =====
+     Settings, stars and voice notes are saved privately for this person. If this view can't reach
+     the account (signed out, offline), everything still works on this device alone. */
+  let cloud=null, settingsAt=store.get('rc.at',0);
+  const voiceSubs={};
+  const syncNote=t=>{ const n=$('syncState'); if(n) n.textContent=t; };
+  /* a device still on the original routine must never overwrite a routine someone has customised */
+  const plain=list=>JSON.stringify(list.map(a=>[a.name,a.start,+a.mins,a.emoji,a.tune]));
+  if(!settingsAt) settingsAt=plain(acts)===plain(DEFAULTS)?1:2;
+  function pushSettings(at){
+    settingsAt=at||Date.now(); store.set('rc.at',settingsAt);
+    if(cloud) cloud.db.doc(cloud.base+'/settings').set({acts,opts,at:settingsAt}).then(()=>syncNote('✓ Synced with your other devices')).catch(()=>syncNote('Couldn’t sync just now — saved on this device'));
+  }
+  function localStars(){
+    const days={}, rewarded={};
+    try{ Object.keys(localStorage).forEach(k=>{
+      if(k.startsWith('rc.done.')) days[k.slice(8)]=store.get(k,{});
+      else if(k.startsWith('rc.rewarded.')) rewarded[k.slice(12)]=true;
+    }); }catch(e){}
+    /* keep the last two weeks only */
+    const cut=new Date(); cut.setDate(cut.getDate()-14);
+    Object.keys(days).forEach(k=>{ const [y,m,d]=k.split('-').map(Number); if(new Date(y,m-1,d)<cut) delete days[k]; });
+    return {days,rewarded};
+  }
+  function pushStars(){ if(cloud){ const st=localStars(); cloud.db.doc(cloud.base+'/stars').set({...st,at:Date.now()}).catch(()=>{}); } }
+  function mergeStars(d){
+    let changed=false;
+    Object.entries(d.days||{}).forEach(([k,obj])=>{
+      const mine=store.get('rc.done.'+k,{}); let add=false;
+      Object.keys(obj||{}).forEach(id=>{ if(obj[id] && !mine[id]){ mine[id]=true; add=true; } });
+      if(add){ store.set('rc.done.'+k,mine); changed=true; if(k===today()) done=mine; }
+    });
+    Object.keys(d.rewarded||{}).forEach(w=>{ if(!store.get('rc.rewarded.'+w,false)){ store.set('rc.rewarded.'+w,true); } });
+    return changed;
+  }
+  /* a smaller copy of a voice note for syncing: 11 kHz, up to 7 seconds */
+  async function smallCopyB64(wav){
+    const buf=await wav.arrayBuffer(), v=new DataView(buf);
+    const rate=v.getUint32(24,true), n=(buf.byteLength-44)>>1, step=Math.max(1,Math.round(rate/11025));
+    const outRate=Math.round(rate/step), len=Math.min(Math.floor(n/step),outRate*7);
+    const ab=new ArrayBuffer(44+len*2), o=new DataView(ab);
+    const w=(p,str)=>{ for(let i=0;i<str.length;i++) o.setUint8(p+i,str.charCodeAt(i)); };
+    w(0,'RIFF'); o.setUint32(4,36+len*2,true); w(8,'WAVE'); w(12,'fmt '); o.setUint32(16,16,true);
+    o.setUint16(20,1,true); o.setUint16(22,1,true); o.setUint32(24,outRate,true); o.setUint32(28,outRate*2,true);
+    o.setUint16(32,2,true); o.setUint16(34,16,true); w(36,'data'); o.setUint32(40,len*2,true);
+    for(let i=0;i<len;i++){ let sum=0; for(let j=0;j<step;j++) sum+=v.getInt16(44+((i*step+j)<<1),true); o.setInt16(44+i*2,Math.round(sum/step),true); }
+    const u8=new Uint8Array(ab); let bin=''; for(let i=0;i<u8.length;i+=0x8000) bin+=String.fromCharCode.apply(null,u8.subarray(i,i+0x8000));
+    return btoa(bin);
+  }
+  function cloudVoiceUp(id,wav,at){
+    if(!cloud) return;
+    smallCopyB64(wav).then(b64=>cloud.db.doc(cloud.base+'/voice-'+id).set({b64,at}))
+      .then(()=>syncNote('✓ Voice note synced')).catch(()=>syncNote('Voice note saved on this device only'));
+  }
+  function cloudVoiceDel(id){
+    const at=Date.now(); store.set('rc.voiceAt.'+id,at);
+    if(cloud) cloud.db.doc(cloud.base+'/voice-'+id).set({deleted:true,at}).catch(()=>{});
+  }
+  function resubscribeVoices(){
+    if(!cloud) return;
+    const ids=new Set(acts.map(a=>a.id).concat('welldone'));
+    Object.keys(voiceSubs).forEach(id=>{ if(!ids.has(id)){ voiceSubs[id](); delete voiceSubs[id]; } });
+    ids.forEach(id=>{
+      if(voiceSubs[id]) return;
+      voiceSubs[id]=cloud.db.doc(cloud.base+'/voice-'+id).onSnapshot(async snap=>{
+        if(!snap.exists) return;
+        const d=snap.data()||{}, mine=store.get('rc.voiceAt.'+id,0);
+        if(!d.at || d.at<=mine) return;
+        store.set('rc.voiceAt.'+id,d.at);
+        if(d.deleted){ await forgetVoice(id); }
+        else if(d.b64){
+          try{ const bin=atob(d.b64), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) u8[i]=bin.charCodeAt(i);
+            await storeWav(id,new Blob([u8],{type:'audio/wav'}),true); }catch(e){}
+        }
+        lastSig=''; render();
+      },()=>{});
+    });
+  }
+  async function initCloud(){
+    syncNote('Connecting to your account…');
+    try{
+      const C=window.claude; if(!C||!C.use){ syncNote('Saved on this device only'); return; }
+      const [db,user]=await Promise.all([C.use('db'),C.use('user')]);
+      if(!db||!user){ syncNote('Saved on this device only (open it from claude.ai while signed in to sync)'); return; }
+      const uid=await user.id(); if(!uid){ syncNote('Saved on this device only'); return; }
+      cloud={db,base:'data/users/'+uid};
+      let first=true;
+      db.doc(cloud.base+'/settings').onSnapshot(snap=>{
+        if(!snap.exists){ if(first){ first=false; pushSettings(settingsAt<=2?settingsAt:0); } return; }
+        first=false;
+        const d=snap.data()||{};
+        if((d.at||0)>settingsAt && Array.isArray(d.acts)){
+          acts=d.acts; opts=Object.assign({},opts,d.opts||{});
+          settingsAt=d.at; store.set('rc.at',settingsAt); store.set('rc.acts',acts); store.set('rc.opts',opts);
+          resubscribeVoices(); lastSig=''; render();
+        } else if((d.at||0)<settingsAt){ pushSettings(settingsAt<=2?(settingsAt===1?1:0):settingsAt); }
+        syncNote('✓ Synced with your other devices');
+      },()=>syncNote('Couldn’t reach your account — saved on this device'));
+      db.doc(cloud.base+'/stars').onSnapshot(snap=>{
+        if(!snap.exists){ pushStars(); return; }
+        if(mergeStars(snap.data()||{})){ lastSig=''; render(); }
+        const mine=localStars(), theirs=snap.data()||{};
+        const missing=Object.entries(mine.days).some(([k,o])=>Object.keys(o).some(id=>o[id]&&!(theirs.days&&theirs.days[k]&&theirs.days[k][id])));
+        if(missing) pushStars();
+      },()=>{});
+      resubscribeVoices();
+      /* voice notes recorded before syncing existed: send them up once */
+      acts.map(a=>a.id).concat('welldone').forEach(async id=>{
+        if(store.get('rc.voiceAt.'+id,0)) return;
+        if(clipOf(id)!=='wav' && !(clipOf(id)||'').startsWith('data:')) return;
+        try{ const u=await voiceUrl(id); if(!u) return; const b=await (await fetch(u)).blob(); const at=Date.now(); store.set('rc.voiceAt.'+id,at); cloudVoiceUp(id,b,at); }catch(e){}
+      });
+    }catch(e){ syncNote('Saved on this device only'); }
+  }
+  initCloud();
+  if(STANDALONE && 'serviceWorker' in navigator && location.protocol==='https:'){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+
+  render(); setInterval(render,1000);
+})();
+</script>
+</body>
+</html>
