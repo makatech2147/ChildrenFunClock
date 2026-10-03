@@ -1,5 +1,5 @@
 /* Lets My Day Clock open even when the internet is off. */
-const CACHE = 'day-clock-v14';
+const CACHE = 'day-clock-v15';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

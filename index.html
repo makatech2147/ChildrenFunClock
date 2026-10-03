@@ -53,7 +53,7 @@ h1{ font-size:clamp(1.5rem,4vw,2.1rem); margin:0; font-weight:800; letter-spacin
 
 .dial{ width:100%; max-width:440px; margin:0 auto; display:block; }
 .dial .face{ fill:var(--face); stroke:var(--line); stroke-width:6; }
-.dial .num{ fill:var(--ink); font-weight:800; font-size:19px; text-anchor:middle; dominant-baseline:central; }
+.dial .num{ fill:var(--ink); font-weight:800; font-size:16px; text-anchor:middle; dominant-baseline:central; }
 .dial .tick{ stroke:var(--line); stroke-width:3; stroke-linecap:round; }
 .dial .hand{ stroke:var(--ink); stroke-linecap:round; }
 .dial .sec{ stroke:#FF7A85; stroke-width:2; stroke-linecap:round; }
@@ -243,7 +243,7 @@ h1{ font-size:clamp(1.4rem,3.6vmin,2.8rem); }
     </div>
   </section>
   <p class="sleep" id="sleepTip" hidden><strong>Grown-ups:</strong> this device may let the screen go to sleep, and alarms can’t ring while it’s asleep. On iPhone or iPad: Settings → Display &amp; Brightness → Auto-Lock → <strong>Never</strong>, and keep it on the charger.</p>
-  <p class="note">Keep this screen open — the alarms ring only while the clock is showing. <span class="ver">v9</span></p>
+  <p class="note">Keep this screen open — the alarms ring only while the clock is showing. <span class="ver">v15</span></p>
 </div>
 
 <div class="ov show" id="start">
@@ -276,7 +276,7 @@ h1{ font-size:clamp(1.4rem,3.6vmin,2.8rem); }
 
 <div class="ov" id="settings">
   <div class="panel" role="dialog" aria-labelledby="setTitle">
-    <h3 id="setTitle">Grown-ups' settings <span class="ver">· version 14</span></h3>
+    <h3 id="setTitle">Grown-ups' settings <span class="ver">· version 15</span></h3>
     <p class="small" id="syncState" aria-live="polite"></p>
     <div class="check"><button id="soundCheck">🔊 Sound check</button> <span class="small">Plays a tune, then each of your recordings, and shows what worked.</span><ul id="checkOut"></ul></div>
     <p>Set each activity's start time and how long it lasts. A gentle chime plays 5 minutes before, then the alarm plays at the start time.</p>
@@ -673,23 +673,29 @@ h1{ font-size:clamp(1.4rem,3.6vmin,2.8rem); }
   function drawDial(now){
     const nowMin=now.getHours()*60+now.getMinutes(), half=now.getHours()<12?0:1;
     let s=`<circle class="face" cx="150" cy="150" r="144"/>`;
-    /* the face shows what's happening from an hour ago to 11 hours ahead, so every upcoming alarm
-       (morning or evening, preset or new) appears on it, not just ones in the current half of the day */
-    const lo=nowMin-60, hi=nowMin+660, all=sorted(), curA=currentOf(all,nowMin);
-    const shown=[];
-    all.forEach(a=>[-1440,0,1440].forEach(sh=>{ const st=a.s+sh, en=st+a.mins; if(st<hi && en>lo) shown.push({a,st:Math.max(st,lo),en:Math.min(en,hi)}); }));
-    /* draw the current activity last so it sits on top of any overlapping ones */
-    shown.sort((x,y)=>(x.a===curA)-(y.a===curA)).forEach(({a,st,en})=>{
-      const a0=angOf(((st%1440)+1440)%1440), a1=angOf(((en%1440)+1440)%1440-0.01);
-      const cur=a===curA;
-      s+=`<path d="${arc(120,a0,a1)}" stroke="${a.c}" stroke-width="${cur?34:26}" fill="none" opacity="${cur?1:.8}"/>`;
-      const mid=(a0+((a1<a0?a1+360:a1)-a0)/2); const [ex,ey]=pol(120,mid);
-      s+=`<text x="${ex.toFixed(1)}" y="${ey.toFixed(1)}" font-size="17" text-anchor="middle" dominant-baseline="central">${esc(a.emoji)}</text>`;
+    /* Every activity is always on the face, in two rings:
+       outer ring = morning (midnight to noon), inner ring = afternoon & evening (noon to midnight).
+       The ring for the part of the day we're in now is bright; the other is softer. */
+    const all=sorted(), curA=currentOf(all,nowMin), RING=[128,101];
+    const pieces=[];
+    all.forEach(a=>{
+      const st=a.s, en=Math.min(a.s+a.mins,1440);
+      [0,1].forEach(h=>{ const lo=h*720, hi=lo+720, x=Math.max(st,lo), y=Math.min(en,hi); if(y>x) pieces.push({a,h,st:x,en:y}); });
     });
-    for(let i=0;i<12;i++){ const [x0,y0]=pol(102,i*30),[x1,y1]=pol(96,i*30); s+=`<line class="tick" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
-    for(let h=1;h<=12;h++){ const [x,y]=pol(80,h*30); s+=`<text class="num" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${h}</text>`; }
+    pieces.sort((x,y)=>(x.a===curA)-(y.a===curA)).forEach(({a,h,st,en})=>{
+      const r=RING[h], a0=angOf(st), a1=angOf(en-0.01);
+      const cur=a===curA, active=h===half;
+      s+=`<path d="${arc(r,a0,a1)}" stroke="${a.c}" stroke-width="${cur?28:22}" fill="none" opacity="${cur?1:active?.85:.4}"/>`;
+      const mid=(a0+((a1<a0?a1+360:a1)-a0)/2); const [ex,ey]=pol(r,mid);
+      s+=`<text x="${ex.toFixed(1)}" y="${ey.toFixed(1)}" font-size="${cur?17:14}" text-anchor="middle" dominant-baseline="central" opacity="${cur||active?1:.55}">${esc(a.emoji)}</text>`;
+    });
+    /* little sun and moon so children can tell the rings apart */
+    s+=`<text x="150" y="${150-RING[0]-1}" font-size="9" text-anchor="middle" dominant-baseline="central" opacity="${half===0?1:.5}">☀️</text>`;
+    s+=`<text x="150" y="${150-RING[1]+1}" font-size="9" text-anchor="middle" dominant-baseline="central" opacity="${half===1?1:.5}">🌙</text>`;
+    for(let i=0;i<12;i++){ const [x0,y0]=pol(86,i*30),[x1,y1]=pol(82,i*30); s+=`<line class="tick" x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}"/>`; }
+    for(let h=1;h<=12;h++){ const [x,y]=pol(68,h*30); s+=`<text class="num" x="${x.toFixed(1)}" y="${y.toFixed(1)}">${h}</text>`; }
     const sec=now.getSeconds(), mn=now.getMinutes()+sec/60, hr=(now.getHours()%12)+mn/60;
-    const [hx,hy]=pol(54,hr*30),[mx,my]=pol(88,mn*6),[sx,sy]=pol(94,sec*6);
+    const [hx,hy]=pol(46,hr*30),[mx,my]=pol(72,mn*6),[sx,sy]=pol(78,sec*6);
     s+=`<line class="hand" x1="150" y1="150" x2="${hx}" y2="${hy}" stroke-width="10"/>`;
     s+=`<line class="hand" x1="150" y1="150" x2="${mx}" y2="${my}" stroke-width="6"/>`;
     s+=`<line class="sec" x1="150" y1="150" x2="${sx}" y2="${sy}"/>`;
